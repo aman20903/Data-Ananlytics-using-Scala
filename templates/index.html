@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Employee Dashboard</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <div class="container mt-4">
+        <h1 class="mb-4">Office Dashboard</h1>
+        
+        <!-- Error Alert -->
+        <div id="errorAlert" class="alert alert-danger d-none" role="alert">
+        </div>
+        
+        <!-- Loading Spinner -->
+        <div id="loadingSpinner" class="text-center mb-4">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+        </div>
+
+        <!-- Filters -->
+        <div class="card mb-4">
+            <div class="card-body">
+                <h5 class="card-title">Filters</h5>
+                <div class="row">
+                    <div class="col-md-3">
+                        <select id="departmentFilter" class="form-select">
+                            <option value="">All Departments</option>
+                        </select>
+                    </div>
+                    <div class="col-md-2">
+                        <input type="number" id="minAgeFilter" class="form-control" placeholder="Min Age">
+                    </div>
+                    <div class="col-md-2">
+                        <input type="number" id="maxAgeFilter" class="form-control" placeholder="Max Age">
+                    </div>
+                    <div class="col-md-2">
+                        <input type="number" id="minSalaryFilter" class="form-control" placeholder="Min Salary">
+                    </div>
+                    <div class="col-md-2">
+                        <input type="number" id="maxSalaryFilter" class="form-control" placeholder="Max Salary">
+                    </div>
+                    <div class="col-md-1">
+                        <button onclick="applyFilters()" class="btn btn-primary">Apply</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Export Button -->
+        <div class="mb-4 text-end">
+            <button id="exportButton" class="btn btn-success" onclick="exportFilteredData()">
+                Export Filtered Data
+            </button>
+        </div>
+
+        <!-- Department Statistics -->
+        <div class="row mb-4">
+            <div class="col-md-4">
+                <div class="card">
+                    <div class="card-body">
+                        <h5 class="card-title">Department Distribution</h5>
+                        <canvas id="deptChart"></canvas>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card">
+                    <div class="card-body">
+                        <h5 class="card-title">Average Salary by Department</h5>
+                        <canvas id="salaryChart"></canvas>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card">
+                    <div class="card-body">
+                        <h5 class="card-title">Age Distribution</h5>
+                        <canvas id="ageChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Employee Table -->
+        <div class="card">
+            <div class="card-body">
+                <h5 class="card-title">Employee List</h5>
+                <div class="table-responsive">
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>Emp No</th>
+                                <th>Name</th>
+                                <th>Salary</th>
+                                <th>Age</th>
+                                <th>Department</th>
+                            </tr>
+                        </thead>
+                        <tbody id="employeeTable">
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const loadingSpinner = document.getElementById('loadingSpinner');
+        const errorAlert = document.getElementById('errorAlert');
+
+        function showError(message) {
+            errorAlert.textContent = message;
+            errorAlert.classList.remove('d-none');
+        }
+
+        function hideError() {
+            errorAlert.classList.add('d-none');
+        }
+
+        function showLoading() {
+            loadingSpinner.classList.remove('d-none');
+        }
+
+        function hideLoading() {
+            loadingSpinner.classList.add('d-none');
+        }
+
+        // Load initial data
+        async function loadInitialData() {
+            try {
+                showLoading();
+                hideError();
+
+                const response = await fetch('/employees');
+                if (!response.ok) {
+                    throw new Error('Failed to load employee data');
+                }
+                const data = await response.json();
+                
+                if (data.error) {
+                    throw new Error(data.error);
+                }
+
+                updateEmployeeTable(data);
+                populateDepartmentFilter(data);
+
+                // Load department statistics
+                const statsResponse = await fetch('/department_stats');
+                if (!statsResponse.ok) {
+                    throw new Error('Failed to load department statistics');
+                }
+                const statsData = await statsResponse.json();
+                
+                if (statsData.error) {
+                    throw new Error(statsData.error);
+                }
+
+                createDepartmentChart(statsData);
+                createSalaryChart(statsData);
+                createAgeChart(statsData);
+            } catch (error) {
+                showError(`Error: ${error.message}`);
+            } finally {
+                hideLoading();
+            }
+        }
+
+        // Load initial data when page loads
+        window.addEventListener('load', loadInitialData);
+
+        function updateEmployeeTable(data) {
+            const tbody = document.getElementById('employeeTable');
+            tbody.innerHTML = '';
+            data.forEach(emp => {
+                tbody.innerHTML += `
+                    <tr>
+                        <td>${emp.Emp_No}</td>
+                        <td>${emp.Emp_Name}</td>
+                        <td>${emp.Salary.toLocaleString()}</td>
+                        <td>${emp.Age}</td>
+                        <td>${emp.Department}</td>
+                    </tr>
+                `;
+            });
+        }
+
+        function populateDepartmentFilter(data) {
+            const departments = [...new Set(data.map(emp => emp.Department))];
+            const select = document.getElementById('departmentFilter');
+            select.innerHTML = '<option value="">All Departments</option>';
+            departments.forEach(dept => {
+                select.innerHTML += `<option value="${dept}">${dept}</option>`;
+            });
+        }
+
+        async function applyFilters() {
+            try {
+                showLoading();
+                hideError();
+
+                const department = document.getElementById('departmentFilter').value;
+                const minAge = document.getElementById('minAgeFilter').value;
+                const maxAge = document.getElementById('maxAgeFilter').value;
+                const minSalary = document.getElementById('minSalaryFilter').value;
+                const maxSalary = document.getElementById('maxSalaryFilter').value;
+                
+                const response = await fetch(`/filter_employees?department=${department}&min_age=${minAge}&max_age=${maxAge}&min_salary=${minSalary}&max_salary=${maxSalary}`);
+                if (!response.ok) {
+                    throw new Error('Failed to apply filters');
+                }
+                const data = await response.json();
+                
+                if (data.error) {
+                    throw new Error(data.error);
+                }
+
+                updateEmployeeTable(data);
+            } catch (error) {
+                showError(`Error: ${error.message}`);
+            } finally {
+                hideLoading();
+            }
+        }
+
+        function exportFilteredData() {
+            try {
+                showLoading();
+                hideError();
+
+                const department = document.getElementById('departmentFilter').value;
+                const minAge = document.getElementById('minAgeFilter').value;
+                const maxAge = document.getElementById('maxAgeFilter').value;
+                const minSalary = document.getElementById('minSalaryFilter').value;
+                const maxSalary = document.getElementById('maxSalaryFilter').value;
+
+                const url = `/export_employees?department=${department}&min_age=${minAge}&max_age=${maxAge}&min_salary=${minSalary}&max_salary=${maxSalary}`;
+                window.location.href = url;
+            } catch (error) {
+                showError(`Error: ${error.message}`);
+            } finally {
+                hideLoading();
+            }
+        }
+
+        function createDepartmentChart(data) {
+            const ctx = document.getElementById('deptChart');
+            if (ctx.chart) {
+                ctx.chart.destroy();
+            }
+            ctx.chart = new Chart(ctx, {
+                type: 'pie',
+                data: {
+                    labels: data.map(d => d.Department),
+                    datasets: [{
+                        data: data.map(d => d.count),
+                        backgroundColor: [
+                            '#FF6384',
+                            '#36A2EB',
+                            '#FFCE56',
+                            '#4BC0C0',
+                            '#9966FF'
+                        ]
+                    }]
+                }
+            });
+        }
+
+        function createSalaryChart(data) {
+            const ctx = document.getElementById('salaryChart');
+            if (ctx.chart) {
+                ctx.chart.destroy();
+            }
+            ctx.chart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: data.map(d => d.Department),
+                    datasets: [{
+                        label: 'Average Salary',
+                        data: data.map(d => d.avg_salary),
+                        backgroundColor: '#36A2EB'
+                    }]
+                },
+                options: {
+                    scales: {
+                        y: {
+                            beginAtZero: true
+                        }
+                    }
+                }
+            });
+        }
+
+        function createAgeChart(data) {
+            const ctx = document.getElementById('ageChart');
+            if (ctx.chart) {
+                ctx.chart.destroy();
+            }
+            ctx.chart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: data.map(d => d.Department),
+                    datasets: [
+                        {
+                            label: 'Minimum Age',
+                            data: data.map(d => d.min_age),
+                            backgroundColor: '#4BC0C0'
+                        },
+                        {
+                            label: 'Maximum Age',
+                            data: data.map(d => d.max_age),
+                            backgroundColor: '#FF6384'
+                        }
+                    ]
+                },
+                options: {
+                    scales: {
+                        y: {
+                            beginAtZero: true
+                        }
+                    }
+                }
+            });
+        }
+    </script>
+</body>
+</html>

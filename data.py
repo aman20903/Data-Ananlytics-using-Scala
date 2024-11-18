@@ -6,7 +6,7 @@ import json
 import re
 
 # Configure API key
-genai.configure(api_key='AIzaSyDo5wrwBLqsrxWs7crmX_MyPSCV-fXD_rA')
+genai.configure(api_key='YOUR_GEMINI_API_KEY')
 
 def generate_employee_batch(columns, departments, num_records):
     """

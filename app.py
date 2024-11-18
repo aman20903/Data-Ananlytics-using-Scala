@@ -1,3 +1,4 @@
+# app.py
 from flask import Flask, render_template, request, jsonify, send_file
 from pyspark.sql import SparkSession
 from pyspark.sql.types import StructType, StructField, IntegerType, StringType
@@ -27,7 +28,7 @@ def load_employee_data():
     try:
         # Get absolute path to the CSV file
         current_dir = os.path.dirname(os.path.abspath(__file__))
-        csv_path = os.path.join(current_dir, 'employees.csv')
+        csv_path = os.path.join(current_dir, 'emp.csv')
         
         print(f"Loading CSV from: {csv_path}")  # Debug print
         
@@ -87,9 +88,7 @@ def get_department_stats():
             avg("Salary").alias("avg_salary"),
             sum("Salary").alias("total_salary"),
             min("Salary").alias("min_salary"),
-            max("Salary").alias("max_salary"),
-            min("Age").alias("min_age"),
-            max("Age").alias("max_age")
+            max("Salary").alias("max_salary")
         ).collect()
         
         stats_list = [
@@ -99,9 +98,7 @@ def get_department_stats():
                 "avg_salary": float(row["avg_salary"]),
                 "total_salary": float(row["total_salary"]),
                 "min_salary": float(row["min_salary"]),
-                "max_salary": float(row["max_salary"]),
-                "min_age": int(row["min_age"]),
-                "max_age": int(row["max_age"])
+                "max_salary": float(row["max_salary"])
             }
             for row in stats
         ]
@@ -147,6 +144,7 @@ def filter_employees():
         return jsonify(employee_list)
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
 @app.route('/export_employees')
 def export_employees():
     try:

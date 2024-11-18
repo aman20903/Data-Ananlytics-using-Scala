@@ -60,7 +60,7 @@
 
         <!-- Department Statistics -->
         <div class="row mb-4">
-            <div class="col-md-4">
+            <div class="col-md-6">
                 <div class="card">
                     <div class="card-body">
                         <h5 class="card-title">Department Distribution</h5>
@@ -68,19 +68,11 @@
                     </div>
                 </div>
             </div>
-            <div class="col-md-4">
+            <div class="col-md-6">
                 <div class="card">
                     <div class="card-body">
                         <h5 class="card-title">Average Salary by Department</h5>
                         <canvas id="salaryChart"></canvas>
-                    </div>
-                </div>
-            </div>
-            <div class="col-md-4">
-                <div class="card">
-                    <div class="card-body">
-                        <h5 class="card-title">Age Distribution</h5>
-                        <canvas id="ageChart"></canvas>
                     </div>
                 </div>
             </div>
@@ -130,7 +122,6 @@
             loadingSpinner.classList.add('d-none');
         }
 
-        // Load initial data
         async function loadInitialData() {
             try {
                 showLoading();
@@ -149,7 +140,6 @@
                 updateEmployeeTable(data);
                 populateDepartmentFilter(data);
 
-                // Load department statistics
                 const statsResponse = await fetch('/department_stats');
                 if (!statsResponse.ok) {
                     throw new Error('Failed to load department statistics');
@@ -162,7 +152,6 @@
 
                 createDepartmentChart(statsData);
                 createSalaryChart(statsData);
-                createAgeChart(statsData);
             } catch (error) {
                 showError(`Error: ${error.message}`);
             } finally {
@@ -170,7 +159,6 @@
             }
         }
 
-        // Load initial data when page loads
         window.addEventListener('load', loadInitialData);
 
         function updateEmployeeTable(data) {
@@ -284,38 +272,6 @@
                         data: data.map(d => d.avg_salary),
                         backgroundColor: '#36A2EB'
                     }]
-                },
-                options: {
-                    scales: {
-                        y: {
-                            beginAtZero: true
-                        }
-                    }
-                }
-            });
-        }
-
-        function createAgeChart(data) {
-            const ctx = document.getElementById('ageChart');
-            if (ctx.chart) {
-                ctx.chart.destroy();
-            }
-            ctx.chart = new Chart(ctx, {
-                type: 'bar',
-                data: {
-                    labels: data.map(d => d.Department),
-                    datasets: [
-                        {
-                            label: 'Minimum Age',
-                            data: data.map(d => d.min_age),
-                            backgroundColor: '#4BC0C0'
-                        },
-                        {
-                            label: 'Maximum Age',
-                            data: data.map(d => d.max_age),
-                            backgroundColor: '#FF6384'
-                        }
-                    ]
                 },
                 options: {
                     scales: {

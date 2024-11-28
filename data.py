@@ -1,28 +1,33 @@
-#FINALLLL
-
 import google.generativeai as genai
 import pandas as pd
 import json
 import re
 
 # Configure API key
-genai.configure(api_key='YOUR_GEMINI_API_KEY')
+genai.configure(api_key='')
 
 def generate_employee_batch(columns, departments, num_records):
     """
-    Generate a batch of employee records using Gemini API.
+    Generate a batch of employee records using Gemini API with Indian names.
     """
-    prompt = f"""Generate a realistic JSON dataset for employee records with these specifications:
+    prompt = f"""Generate a realistic JSON dataset for Indian employee records with these specifications:
 
 1. {num_records} unique employee records
 2. Columns: {', '.join(columns)}
 3. Departments: {', '.join(departments)}
 4. Ensure:
     - Unique `Emp_No` for each record
-    - Salary ranges appropriate to departments
+    - Salary ranges appropriate to departments (in INR)
     - Age distribution between 22-60
-    - Names vary realistically
+    - Indian names with both first and last names (e.g., "Rajesh Kumar", "Priya Patel", "Amit Shah")
+    - Names should reflect India's diversity (different regions and communities)
     - Balanced department distribution
+    - Salary ranges:
+        * IT: 6,00,000 to 25,00,000 INR
+        * Marketing: 5,00,000 to 18,00,000 INR
+        * Sales: 4,00,000 to 15,00,000 INR
+        * Finance: 5,50,000 to 20,00,000 INR
+        * HR: 4,50,000 to 16,00,000 INR
 
 ### Output Rules:
 - Output must be **ONLY a valid JSON array** of objects.
@@ -30,8 +35,8 @@ def generate_employee_batch(columns, departments, num_records):
 [
     {{
         "Emp_No": 1,
-        "Emp_Name": "Alice Smith",
-        "Salary": 75000,
+        "Emp_Name": "Vikram Mehta",
+        "Salary": 1200000,
         "Age": 32,
         "Department": "IT"
     }},
@@ -48,7 +53,12 @@ def generate_employee_batch(columns, departments, num_records):
             raise ValueError("No valid JSON array found in response.")
         
         json_data = match.group(0)
-        return pd.DataFrame(json.loads(json_data))
+        df = pd.DataFrame(json.loads(json_data))
+        
+        # Format salary with Indian number system
+        df['Salary'] = df['Salary'].apply(lambda x: f"₹{x:,}")
+        
+        return df
     except json.JSONDecodeError as jde:
         print(f"JSON decoding error: {jde}")
     except Exception as e:
@@ -76,7 +86,7 @@ def generate_employee_dataset(columns, departments, total_records, batch_size=10
 def main():
     columns = ['Emp_No', 'Emp_Name', 'Salary', 'Age', 'Department']
     departments = ['IT', 'Marketing', 'Sales', 'Finance', 'HR']
-    total_records = 500
+    total_records = 300
 
     employees_df = generate_employee_dataset(columns, departments, total_records)
 
@@ -84,13 +94,16 @@ def main():
         employees_df = employees_df.drop_duplicates(subset=['Emp_No'])
         employees_df.to_csv('emp.csv', index=False)
         
-        print("Dataset Generation Successful:")
+        print("\nDataset Generation Successful!")
+        print("-" * 50)
         print(f"Total Records: {len(employees_df)}")
         print("\nDataset Preview:")
         print(employees_df.head())
         
         print("\nDepartment Distribution:")
         print(employees_df['Department'].value_counts())
+        
+        print("\nSaved to 'emp.csv'")
     else:
         print("Dataset generation failed.")
 
